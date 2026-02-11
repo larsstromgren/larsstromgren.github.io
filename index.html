@@ -76,17 +76,15 @@ fetch("data/valkretsar_4326.geojson")
       "#393b79", "#637939"
     ];
 
-    function getValkretsName(f) {
-      // Lägg gärna din "riktiga" kolumn först när du vet vad den heter.
-      return (
-        f.properties?.NAMN ||
-        f.properties?.name ||
-        f.properties?.Valkrets ||
-        f.properties?.VALKRETS ||
-        f.properties?.Valkretsnamn ||
-        "Valkrets"
-      );
-    }
+function getValkretsName(f) {
+  return (
+    f.properties?.Vdnamn ||   // <- din riktiga kolumn
+    f.properties?.NAMN ||
+    f.properties?.name ||
+    f.properties?.Valkrets ||
+    "Valkrets"
+  );
+}
 
     // Enkel stabil hash → index i paletten (ger samma färg för samma namn)
     function colorFromString(s) {
