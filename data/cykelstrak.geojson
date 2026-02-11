@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Teststråk" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [18.0686, 59.3293],
+          [18.0786, 59.3393],
+          [18.0886, 59.3493]
+        ]
+      }
+    }
+  ]
+}
