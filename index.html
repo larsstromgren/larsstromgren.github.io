@@ -29,7 +29,7 @@
 
     L.control.layers({ "Ljus (svart/vit)": light, "Mörk (svart/vit)": dark }).addTo(map);
 
-    fetch("data/cykelstrak.geojson")
+fetch("data/cykelstrak_primara.geojson")
       .then(r => r.json())
       .then(gj => {
         const layer = L.geoJSON(gj, {
