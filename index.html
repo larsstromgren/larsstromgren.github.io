@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     html, body, #map { height: 100%; margin: 0; }
+
+    /* valfritt: lite snyggare popup */
+    .leaflet-popup-content { font-size: 14px; line-height: 1.25; }
   </style>
 </head>
 <body>
@@ -29,14 +32,26 @@
 
     L.control.layers({ "Ljus (svart/vit)": light, "Mörk (svart/vit)": dark }).addTo(map);
 
-fetch("data/cykelstrak_primara.geojson")
+    fetch("data/cykelstrak_primara.geojson")
       .then(r => r.json())
       .then(gj => {
+
         const layer = L.geoJSON(gj, {
-          style: () => ({ weight: 5, opacity: 0.9 }),
+          style: (f) => ({
+            weight: (f.properties?.Typ === "Primärt stråk") ? 5 : 3,
+            opacity: 0.95,
+            dashArray: (f.properties?.Typ === "Ungefärligt primärt stråk") ? "8 6" : null
+          }),
           onEachFeature: (f, l) => {
-            const name = f.properties?.name || "Cykelstråk";
-            l.bindPopup(`<strong>${name}</strong>`);
+            const typ = f.properties?.Typ || "Stråk";
+            const ref = f.properties?.Referens || "";
+            const name = f.properties?.name || f.properties?.Namn || ""; // fallback om du har annat fältnamn
+
+            // bygg popup snyggt men robust
+            let html = `<strong>${typ}</strong>`;
+            if (name) html += `<br>${name}`;
+            if (ref)  html += `<br><span style="opacity:.8">${ref}</span>`;
+            l.bindPopup(html);
           }
         }).addTo(map);
 
@@ -44,7 +59,7 @@ fetch("data/cykelstrak_primara.geojson")
       })
       .catch(err => {
         console.error("Kunde inte ladda GeoJSON:", err);
-        alert("Fel: kunde inte ladda data/cykelstrak.geojson");
+        alert("Fel: kunde inte ladda data/cykelstrak_primara.geojson");
       });
   </script>
 </body>
