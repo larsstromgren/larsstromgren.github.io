@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cykelstråk</title>
+  <title>Cykelstråk + Valkretsar</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
@@ -15,8 +15,9 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map("map").setView([59.3293, 18.0686], 12);
+    const map = L.map("map").setView([59.3293, 18.0686], 11);
 
+    // --- Basemaps (svart/vit) ---
     const light = L.tileLayer(
       "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
       { subdomains: "abcd", maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; CARTO" }
@@ -27,40 +28,84 @@
       { subdomains: "abcd", maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; CARTO" }
     );
 
-    L.control.layers({ "Ljus (svart/vit)": light, "Mörk (svart/vit)": dark }).addTo(map);
+    // Lager vi kommer fylla på
+    let cycleLayer = null;
+    let districtsLayer = null;
 
+    // Lagerkontroll (basemap + overlays)
+    const layerControl = L.control.layers(
+      { "Ljus (svart/vit)": light, "Mörk (svart/vit)": dark },
+      {}, // overlays fylls på när de laddats
+      { collapsed: true }
+    ).addTo(map);
+
+    // Hjälp: zooma så allt syns (när båda lagren finns)
+    function fitAllBounds() {
+      const layers = [cycleLayer, districtsLayer].filter(Boolean);
+      if (!layers.length) return;
+
+      const group = L.featureGroup(layers);
+      try {
+        map.fitBounds(group.getBounds(), { padding: [20, 20] });
+      } catch (e) {
+        console.warn("Kunde inte fitBounds:", e);
+      }
+    }
+
+    // --- 1) Cykelstråk ---
     fetch("data/cykelstrak_primara.geojson")
       .then(r => r.json())
       .then(gj => {
-
-        // ✅ HÄR ÄR UPPDATERINGEN (tydligare stråk + dash för ungefärliga)
-        const layer = L.geoJSON(gj, {
-          style: (f) => {
-            const typ = (f.properties?.Typ || "").trim();
-
-            const isPrimary = (typ === "Primärt stråk");
-            const isApprox  = (typ === "Ungefärligt primärt stråk");
-
-            return {
-              color: "#111",                 // syns bra på Carto light/dark
-              weight: isPrimary ? 6 : 3,     // tjockare för primärt
-              opacity: 0.95,
-              dashArray: isApprox ? "10 8" : null
-            };
-          },
+        cycleLayer = L.geoJSON(gj, {
+          style: (f) => ({
+            // tydligare skillnad
+            weight: (f.properties?.Typ === "Primärt stråk") ? 6 : 4,
+            opacity: 0.95,
+            // streckat om ungefärligt
+            dashArray: (f.properties?.Typ === "Ungefärligt primärt stråk") ? "10 8" : null
+          }),
           onEachFeature: (f, l) => {
-            const typ  = f.properties?.Typ || "Stråk";
-            const ref  = f.properties?.Referens || "";
-            l.bindPopup(`<strong>${typ}</strong>${ref ? `<br>${ref}` : ""}`);
+            const typ = f.properties?.Typ || "Stråk";
+            const ref = f.properties?.Referens || f.properties?.name || "";
+            l.bindPopup(`<strong>${typ}</strong>${ref ? "<br>" + ref : ""}`);
           }
         }).addTo(map);
 
-        map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+        layerControl.addOverlay(cycleLayer, "Cykelstråk (primära)");
+        fitAllBounds();
       })
       .catch(err => {
-        console.error("Kunde inte ladda GeoJSON:", err);
+        console.error("Kunde inte ladda cykelstråk:", err);
         alert("Fel: kunde inte ladda data/cykelstrak_primara.geojson");
       });
+
+    // --- 2) Valkretsar (polygoner) ---
+    fetch("data/valkretsar.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        districtsLayer = L.geoJSON(gj, {
+          style: () => ({
+            weight: 2,
+            opacity: 0.9,
+            fillOpacity: 0.08
+          }),
+          onEachFeature: (f, l) => {
+            // Försök hitta ett vettigt namn oavsett fältnamn
+            const p = f.properties || {};
+            const name =
+              p.NAMN || p.namn || p.Name || p.name || p.VALKRETS || p.valkrets || "Valkrets";
+            l.bindPopup(`<strong>${name}</strong>`);
+          }
+        }).addTo(map);
+
+        layerControl.addOverlay(districtsLayer, "Stockholms valkretsar");
+        fitAllBounds();
+      })
+      .catch(err => {
+        console.error("Kunde inte ladda valkretsar:", err);
+        alert("Fel: kunde inte ladda data/valkretsar.geojson");
+      });
+
   </script>
 </body>
 </html>
