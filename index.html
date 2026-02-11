@@ -8,9 +8,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     html, body, #map { height: 100%; margin: 0; }
-
-    /* valfritt: lite snyggare popup */
-    .leaflet-popup-content { font-size: 14px; line-height: 1.25; }
   </style>
 </head>
 <body>
@@ -36,22 +33,25 @@
       .then(r => r.json())
       .then(gj => {
 
+        // ✅ HÄR ÄR UPPDATERINGEN (tydligare stråk + dash för ungefärliga)
         const layer = L.geoJSON(gj, {
-          style: (f) => ({
-            weight: (f.properties?.Typ === "Primärt stråk") ? 5 : 3,
-            opacity: 0.95,
-            dashArray: (f.properties?.Typ === "Ungefärligt primärt stråk") ? "8 6" : null
-          }),
-          onEachFeature: (f, l) => {
-            const typ = f.properties?.Typ || "Stråk";
-            const ref = f.properties?.Referens || "";
-            const name = f.properties?.name || f.properties?.Namn || ""; // fallback om du har annat fältnamn
+          style: (f) => {
+            const typ = (f.properties?.Typ || "").trim();
 
-            // bygg popup snyggt men robust
-            let html = `<strong>${typ}</strong>`;
-            if (name) html += `<br>${name}`;
-            if (ref)  html += `<br><span style="opacity:.8">${ref}</span>`;
-            l.bindPopup(html);
+            const isPrimary = (typ === "Primärt stråk");
+            const isApprox  = (typ === "Ungefärligt primärt stråk");
+
+            return {
+              color: "#111",                 // syns bra på Carto light/dark
+              weight: isPrimary ? 6 : 3,     // tjockare för primärt
+              opacity: 0.95,
+              dashArray: isApprox ? "10 8" : null
+            };
+          },
+          onEachFeature: (f, l) => {
+            const typ  = f.properties?.Typ || "Stråk";
+            const ref  = f.properties?.Referens || "";
+            l.bindPopup(`<strong>${typ}</strong>${ref ? `<br>${ref}` : ""}`);
           }
         }).addTo(map);
 
