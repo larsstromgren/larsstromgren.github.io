@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cykelstråk + Valkretsar + Tunnelbana</title>
+  <title>Cykelstråk + Valkretsar + Tunnelbana + Pendeltåg</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
@@ -141,7 +141,28 @@
       })
       .catch(err => console.error("Kunde inte ladda tunnelbana:", err));
 
-    // 4) Stadsdelar (extra lager, AVSTÄNGT från start)
+    // 4) Pendeltåg
+    fetch("data/pendeltag.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        const pendelLayer = L.geoJSON(gj, {
+          style: () => ({
+            color: "#ec619f",
+            weight: 3,
+            opacity: 0.8
+          }),
+          onEachFeature: (f, l) => {
+            const name = f.properties?.name || "Pendeltåg";
+            l.bindPopup(`<strong>🚆 ${name}</strong>`);
+          }
+        }).addTo(map);
+
+        overlays["Pendeltåg"] = pendelLayer;
+        layerControl.addOverlay(pendelLayer, "Pendeltåg");
+      })
+      .catch(err => console.error("Kunde inte ladda pendeltåg:", err));
+
+    // 5) Stadsdelar (extra lager, AVSTÄNGT från start)
     fetch("data/stadsdel_4326.geojson")
       .then(r => r.json())
       .then(gj => {
