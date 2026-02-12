@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cykelstråk + Valkretsar + Tunnelbana + Pendeltåg</title>
+  <title>Stockholms karta – cykelstråk, kollektivtrafik & valkretsar</title>
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
@@ -162,7 +162,37 @@
       })
       .catch(err => console.error("Kunde inte ladda pendeltåg:", err));
 
-    // 5) Stadsdelar (extra lager, AVSTÄNGT från start)
+    // 5) Spårväg & lokalbana – färg per typ
+    fetch("data/sparvag_lokalbana.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        const colorMap = {
+          "Spårvagn 7":      "#f7a600",
+          "Nockebybanan 12": "#f7a600",
+          "Tvärbanan 30":    "#e36012",
+          "Tvärbanan 31":    "#e36012",
+          "Lidingöbanan 21": "#b5651d",
+          "Saltsjöbanan":    "#7b68a4",
+          "Roslagsbanan":    "#6cbe45"
+        };
+        const sparLayer = L.geoJSON(gj, {
+          style: (f) => ({
+            color: colorMap[f.properties?.typ] || "#999",
+            weight: 3,
+            opacity: 0.85
+          }),
+          onEachFeature: (f, l) => {
+            const typ = f.properties?.typ || "Spårtrafik";
+            l.bindPopup(`<strong>🚊 ${typ}</strong>`);
+          }
+        });
+
+        overlays["Spårväg & lokalbana"] = sparLayer;
+        layerControl.addOverlay(sparLayer, "Spårväg & lokalbana");
+      })
+      .catch(err => console.error("Kunde inte ladda spårväg/lokalbana:", err));
+
+    // 6) Stadsdelar (extra lager, AVSTÄNGT från start)
     fetch("data/stadsdel_4326.geojson")
       .then(r => r.json())
       .then(gj => {
