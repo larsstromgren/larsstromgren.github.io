@@ -192,7 +192,28 @@
       })
       .catch(err => console.error("Kunde inte ladda spårväg/lokalbana:", err));
 
-    // 6) Stadsdelar (extra lager, AVSTÄNGT från start)
+    // 6) Stombussar (linje 1, 2, 3, 4, 6)
+    fetch("data/stombuss.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        const stombussLayer = L.geoJSON(gj, {
+          style: () => ({
+            color: "#1a5fb4",
+            weight: 3,
+            opacity: 0.75
+          }),
+          onEachFeature: (f, l) => {
+            const linje = f.properties?.linje || "Stombuss";
+            l.bindPopup(`<strong>🚌 ${linje}</strong>`);
+          }
+        });
+
+        overlays["Stombussar"] = stombussLayer;
+        layerControl.addOverlay(stombussLayer, "Stombussar");
+      })
+      .catch(err => console.error("Kunde inte ladda stombussar:", err));
+
+    // 7) Stadsdelar (extra lager, AVSTÄNGT från start)
     fetch("data/stadsdel_4326.geojson")
       .then(r => r.json())
       .then(gj => {
