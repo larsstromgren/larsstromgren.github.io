@@ -82,7 +82,7 @@
 
   <!-- Tidslinje-slider -->
   <div class="year-slider-container" id="yearSliderBox">
-    <label>Valår: <strong id="yearLabel">2022</strong></label><br>
+    <label>Kommunalval: <strong id="yearLabel">2022</strong></label><br>
     <input type="range" id="yearSlider" min="0" max="2" step="1" value="2">
     <div class="year-ticks">
       <span data-idx="0">2014</span>
@@ -135,7 +135,7 @@
     const legend = L.control({ position: "bottomright" });
     legend.onAdd = function () {
       const div = L.DomUtil.create("div", "legend");
-      div.innerHTML = '<h4>MP-stöd (riksdagsvalet)</h4>' +
+      div.innerHTML = '<h4>MP-stöd (kommunalvalet)</h4>' +
         colorSteps.map(s =>
           `<div class="legend-item">
              <span class="legend-color" style="background:${s.color}"></span>
@@ -157,9 +157,14 @@
     let currentYear = 2022;
     let valkretsLayer = null;
 
+    const sliderBox = document.getElementById("yearSliderBox");
     const slider = document.getElementById("yearSlider");
     const yearLabel = document.getElementById("yearLabel");
     const ticks = document.querySelectorAll(".year-ticks span");
+
+    // Förhindra att Leaflet fångar events från slidern
+    L.DomEvent.disableClickPropagation(sliderBox);
+    L.DomEvent.disableScrollPropagation(sliderBox);
 
     function setYear(idx) {
       currentYear = years[idx];
