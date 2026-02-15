@@ -179,9 +179,10 @@
 
     function updateValkretsStyle() {
       if (!valkretsLayer) return;
+      console.log("updateValkretsStyle called, year:", currentYear);
       valkretsLayer.eachLayer(layer => {
         const prop = yearPropMap[currentYear];
-        const pct = layer.feature.properties[prop];
+        const pct = layer.feature.properties[prop] ?? (currentYear === 2022 ? layer.feature.properties.MP_pct : null);
         layer.setStyle({
           fillColor: getColor(pct),
           fillOpacity: 0.55
@@ -226,9 +227,12 @@
     fetch("data/valkretsar_mp.geojson")
       .then(r => r.json())
       .then(gj => {
+        console.log("GeoJSON loaded, features:", gj.features.length);
+        console.log("Sample properties:", JSON.stringify(gj.features[0].properties));
+
         valkretsLayer = L.geoJSON(gj, {
           style: (f) => {
-            const pct = f.properties?.MP_pct_2022;
+            const pct = f.properties.MP_pct_2022 ?? f.properties.MP_pct;
             return {
               color: "#222",
               weight: 1,
@@ -238,7 +242,7 @@
             };
           },
           onEachFeature: (f, l) => {
-            l.bindPopup(""); // will be set by updateValkretsStyle
+            l.bindPopup("");
             l.on("mouseover", () => l.setStyle({ fillOpacity: 0.75 }));
             l.on("mouseout",  () => l.setStyle({ fillOpacity: 0.55 }));
           }
@@ -248,11 +252,12 @@
         layerControl.addOverlay(valkretsLayer, "Valkretsar (MP %)");
         boundsList.push(valkretsLayer.getBounds());
         tryFitBounds();
-        updateValkretsStyle(); // set popups for initial year
+        updateValkretsStyle();
+        console.log("Valkretsar layer initialized, currentYear:", currentYear);
       })
       .catch(err => {
         console.error("Kunde inte ladda valkretsar_mp.geojson:", err);
-        alert("Fel: kunde inte ladda data/valkretsar_mp.geojson");
+        alert("Fel: kunde inte ladda data/valkretsar_mp.geojson – " + err.message);
       });
 
     // 2) Cykelstråk – TUNNARE och lägre opacitet, AVSTÄNGT som default
