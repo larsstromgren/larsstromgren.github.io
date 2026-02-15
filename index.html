@@ -7,11 +7,89 @@
 
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
-    html, body, #map { height: 100%; margin: 0; }
+    html, body, #map { height: 100%; margin: 0; font-family: system-ui, sans-serif; }
+
+    /* --- Tidslinje-slider --- */
+    .year-slider-container {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      border-radius: 12px;
+      padding: 12px 24px 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      text-align: center;
+      min-width: 280px;
+    }
+    .year-slider-container label {
+      font-weight: 600;
+      font-size: 14px;
+      color: #333;
+    }
+    .year-slider-container input[type=range] {
+      width: 220px;
+      margin: 6px 0 2px;
+      accent-color: #2ca25f;
+    }
+    .year-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: #555;
+      padding: 0 2px;
+    }
+    .year-ticks span {
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .year-ticks span:hover { background: #e5f5e0; }
+    .year-ticks span.active { font-weight: 700; color: #0a7a3b; }
+
+    /* --- Legend --- */
+    .legend {
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      padding: 10px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .legend h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      color: #333;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 14px;
+      border-radius: 2px;
+      border: 1px solid rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- Tidslinje-slider -->
+  <div class="year-slider-container" id="yearSliderBox">
+    <label>Valår: <strong id="yearLabel">2022</strong></label><br>
+    <input type="range" id="yearSlider" min="0" max="2" step="1" value="2">
+    <div class="year-ticks">
+      <span data-idx="0">2014</span>
+      <span data-idx="1">2018</span>
+      <span data-idx="2" class="active">2022</span>
+    </div>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
@@ -35,18 +113,103 @@
     const overlays = {};
     const layerControl = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
 
-    // --- Koropletthjälp: MP i procent (0..100) ---
+    // --- Färgskala: MP i procent (0..100) ---
+    const colorSteps = [
+      { min: 12, color: "#0a7a3b", label: "12 %+" },
+      { min: 10, color: "#2ca25f", label: "10–12 %" },
+      { min:  8, color: "#66c2a4", label: "8–10 %" },
+      { min:  6, color: "#b2e2a4", label: "6–8 %" },
+      { min:  4, color: "#e5f5e0", label: "4–6 %" },
+      { min:  0, color: "#f7fcf5", label: "< 4 %" }
+    ];
+
     function getColor(pct) {
       if (pct == null) return "#cccccc";
-      if (pct >= 12) return "#0a7a3b";
-      if (pct >= 10) return "#2ca25f";
-      if (pct >=  8) return "#66c2a4";
-      if (pct >=  6) return "#b2e2a4";
-      if (pct >=  4) return "#e5f5e0";
+      for (const s of colorSteps) {
+        if (pct >= s.min) return s.color;
+      }
       return "#f7fcf5";
     }
 
-    // Håll koll på bounds så vi kan zooma “bra” efter att lager laddats
+    // --- Legend ---
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      div.innerHTML = '<h4>MP-stöd (riksdagsvalet)</h4>' +
+        colorSteps.map(s =>
+          `<div class="legend-item">
+             <span class="legend-color" style="background:${s.color}"></span>
+             <span>${s.label}</span>
+           </div>`
+        ).join("") +
+        '<div class="legend-item"><span class="legend-color" style="background:#cccccc"></span><span>Data saknas</span></div>';
+      return div;
+    };
+    legend.addTo(map);
+
+    // --- Tidslinje-logik ---
+    const years = [2014, 2018, 2022];
+    const yearPropMap = {
+      2014: "MP_pct_2014",
+      2018: "MP_pct_2018",
+      2022: "MP_pct_2022"
+    };
+    let currentYear = 2022;
+    let valkretsLayer = null;
+
+    const slider = document.getElementById("yearSlider");
+    const yearLabel = document.getElementById("yearLabel");
+    const ticks = document.querySelectorAll(".year-ticks span");
+
+    function setYear(idx) {
+      currentYear = years[idx];
+      yearLabel.textContent = currentYear;
+      slider.value = idx;
+      ticks.forEach((t, i) => t.classList.toggle("active", i === idx));
+      if (valkretsLayer) updateValkretsStyle();
+    }
+
+    slider.addEventListener("input", (e) => setYear(+e.target.value));
+    ticks.forEach(t => t.addEventListener("click", () => setYear(+t.dataset.idx)));
+
+    function updateValkretsStyle() {
+      if (!valkretsLayer) return;
+      valkretsLayer.eachLayer(layer => {
+        const prop = yearPropMap[currentYear];
+        const pct = layer.feature.properties[prop];
+        layer.setStyle({
+          fillColor: getColor(pct),
+          fillOpacity: 0.55
+        });
+        // Update popup
+        const f = layer.feature;
+        const name = f.properties?.Vdnamn || "Valkrets";
+        const lkfv = f.properties?.Lkfv || "";
+        const p2014 = f.properties.MP_pct_2014;
+        const p2018 = f.properties.MP_pct_2018;
+        const p2022 = f.properties.MP_pct_2022;
+        const fmt = (v) => v == null ? "—" : v.toFixed(1) + "%";
+        const arrow = (a, b) => {
+          if (a == null || b == null) return "";
+          const diff = b - a;
+          if (diff > 0.5) return ' <span style="color:#0a7a3b">&#9650;</span>';
+          if (diff < -0.5) return ' <span style="color:#c0392b">&#9660;</span>';
+          return ' <span style="color:#888">&#9644;</span>';
+        };
+
+        layer.setPopupContent(
+          `<strong>${name}</strong><br>` +
+          `<span style="color:#888;font-size:11px">Lkfv: ${lkfv}</span><br><br>` +
+          `<table style="font-size:13px;border-collapse:collapse">` +
+          `<tr><td style="padding:1px 8px 1px 0;font-weight:${currentYear===2014?700:400}">2014:</td><td>${fmt(p2014)}</td><td></td></tr>` +
+          `<tr><td style="padding:1px 8px 1px 0;font-weight:${currentYear===2018?700:400}">2018:</td><td>${fmt(p2018)}</td><td>${arrow(p2014,p2018)}</td></tr>` +
+          `<tr><td style="padding:1px 8px 1px 0;font-weight:${currentYear===2022?700:400}">2022:</td><td>${fmt(p2022)}</td><td>${arrow(p2018,p2022)}</td></tr>` +
+          `</table>`
+        );
+      });
+    }
+
+    // Håll koll på bounds
     const boundsList = [];
     function tryFitBounds() {
       if (boundsList.length === 0) return;
@@ -54,13 +217,13 @@
       map.fitBounds(b, { padding: [20, 20] });
     }
 
-    // 1) Valkretsar med MP (koroplett + popup)
+    // 1) Valkretsar med MP (koroplett + popup + tidslinje)
     fetch("data/valkretsar_mp.geojson")
       .then(r => r.json())
       .then(gj => {
-        const valkretsMP = L.geoJSON(gj, {
+        valkretsLayer = L.geoJSON(gj, {
           style: (f) => {
-            const pct = f.properties?.MP_pct; // ska vara 0..100
+            const pct = f.properties?.MP_pct_2022;
             return {
               color: "#222",
               weight: 1,
@@ -70,53 +233,44 @@
             };
           },
           onEachFeature: (f, l) => {
-            const name = f.properties?.Vdnamn || "Valkrets";
-            const lkfv = f.properties?.Lkfv || "";
-            const pct  = f.properties?.MP_pct;
-            const pctTxt = (pct == null) ? "saknas" : `${pct.toFixed(1)}%`;
-
-            l.bindPopup(
-              `<strong>${name}</strong><br>` +
-              `Lkfv: ${lkfv}<br>` +
-              `MP: ${pctTxt}`
-            );
+            l.bindPopup(""); // will be set by updateValkretsStyle
             l.on("mouseover", () => l.setStyle({ fillOpacity: 0.75 }));
             l.on("mouseout",  () => l.setStyle({ fillOpacity: 0.55 }));
           }
         }).addTo(map);
 
-        overlays["Valkretsar (MP %)"] = valkretsMP;
-        layerControl.addOverlay(valkretsMP, "Valkretsar (MP %)");
-        boundsList.push(valkretsMP.getBounds());
+        overlays["Valkretsar (MP %)"] = valkretsLayer;
+        layerControl.addOverlay(valkretsLayer, "Valkretsar (MP %)");
+        boundsList.push(valkretsLayer.getBounds());
         tryFitBounds();
+        updateValkretsStyle(); // set popups for initial year
       })
       .catch(err => {
         console.error("Kunde inte ladda valkretsar_mp.geojson:", err);
         alert("Fel: kunde inte ladda data/valkretsar_mp.geojson");
       });
 
-    // 2) Cykelstråk (primära) – tydligare stil
+    // 2) Cykelstråk – TUNNARE och lägre opacitet, AVSTÄNGT som default
     fetch("data/cykelstrak_primara.geojson")
       .then(r => r.json())
       .then(gj => {
         const cykelLayer = L.geoJSON(gj, {
           style: (f) => ({
-            color: "#111",
-            weight: (f.properties?.Typ === "Primärt stråk") ? 5 : 3,
-            opacity: 0.95,
-            dashArray: (f.properties?.Typ === "Ungefärligt primärt stråk") ? "8 6" : null
+            color: "#333",
+            weight: (f.properties?.Typ === "Primärt stråk") ? 2.5 : 1.5,
+            opacity: 0.5,
+            dashArray: (f.properties?.Typ === "Ungefärligt primärt stråk") ? "6 5" : null
           }),
           onEachFeature: (f, l) => {
             const typ  = f.properties?.Typ || "Stråk";
             const ref  = f.properties?.Referens || "";
             l.bindPopup(`<strong>${typ}</strong><br>${ref}`);
           }
-        }).addTo(map);
+        });
+        // Inte addTo(map) – avstängt som default
 
         overlays["Cykelstråk"] = cykelLayer;
         layerControl.addOverlay(cykelLayer, "Cykelstråk");
-        boundsList.push(cykelLayer.getBounds());
-        tryFitBounds();
       })
       .catch(err => console.error("Kunde inte ladda cykelstråk:", err));
 
