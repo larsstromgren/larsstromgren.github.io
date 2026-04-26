@@ -113,7 +113,7 @@
     const overlays = {};
     const layerControl = L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
 
-    // --- Färgskala: MP i procent (0..100) ---
+    // --- Färgskala: MP i procent ---
     const colorSteps = [
       { min: 12, color: "#0a7a3b", label: "12 %+" },
       { min: 10, color: "#2ca25f", label: "10–12 %" },
@@ -131,21 +131,56 @@
       return "#f7fcf5";
     }
 
-    // --- Legend ---
+    // --- Färgskala: befolkningstäthet (inv/km²) ---
+    const densitySteps = [
+      { min: 15000, color: "#7f0000", label: "≥ 15 000" },
+      { min: 10000, color: "#d73027", label: "10 000–15 000" },
+      { min:  6000, color: "#f46d43", label: "6 000–10 000" },
+      { min:  3000, color: "#fdae61", label: "3 000–6 000" },
+      { min:  1000, color: "#fee090", label: "1 000–3 000" },
+      { min:   100, color: "#ffffbf", label: "100–1 000" },
+      { min:     0, color: "#f7f7f7", label: "< 100" }
+    ];
+
+    function getDensityColor(d) {
+      if (d == null) return "#cccccc";
+      for (const s of densitySteps) {
+        if (d >= s.min) return s.color;
+      }
+      return "#f7f7f7";
+    }
+
+    // --- Dynamisk legend ---
     const legend = L.control({ position: "bottomright" });
-    legend.onAdd = function () {
-      const div = L.DomUtil.create("div", "legend");
-      div.innerHTML = '<h4>MP-stöd (kommunalvalet)</h4>' +
+    let activeLegendLayer = "mp"; // "mp" eller "density"
+
+    function buildLegendHtml() {
+      if (activeLegendLayer === "density") {
+        return '<h4>Befolkningstäthet</h4><div style="font-size:11px;color:#777;margin-bottom:4px">inv/km² (2024)</div>' +
+          densitySteps.map(s =>
+            `<div class="legend-item"><span class="legend-color" style="background:${s.color}"></span><span>${s.label}</span></div>`
+          ).join("") +
+          '<div class="legend-item"><span class="legend-color" style="background:#cccccc"></span><span>Data saknas</span></div>';
+      }
+      return '<h4>MP-stöd (kommunalvalet)</h4>' +
         colorSteps.map(s =>
-          `<div class="legend-item">
-             <span class="legend-color" style="background:${s.color}"></span>
-             <span>${s.label}</span>
-           </div>`
+          `<div class="legend-item"><span class="legend-color" style="background:${s.color}"></span><span>${s.label}</span></div>`
         ).join("") +
         '<div class="legend-item"><span class="legend-color" style="background:#cccccc"></span><span>Data saknas</span></div>';
+    }
+
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      div.id = "main-legend";
+      div.innerHTML = buildLegendHtml();
       return div;
     };
     legend.addTo(map);
+
+    function updateLegend() {
+      const el = document.getElementById("main-legend");
+      if (el) el.innerHTML = buildLegendHtml();
+    }
 
     // --- Tidslinje-logik ---
     const years = [2014, 2018, 2022];
@@ -399,6 +434,50 @@
         layerControl.addOverlay(stadsdelLayer, "Stadsdelar");
       })
       .catch(err => console.error("Kunde inte ladda stadsdelar:", err));
+
+    // 8) Befolkningstäthet per stadsdel (koroplett)
+    fetch("data/stadsdel_befolkning.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        const täthetLayer = L.geoJSON(gj, {
+          style: (f) => ({
+            color: "#444",
+            weight: 0.8,
+            opacity: 0.8,
+            fillColor: getDensityColor(f.properties?.tathet),
+            fillOpacity: 0.65
+          }),
+          onEachFeature: (f, l) => {
+            const namn = f.properties?.NAMN || "Stadsdel";
+            const pop  = f.properties?.befolkning_2024;
+            const area = f.properties?.area_km2;
+            const tat  = f.properties?.tathet;
+            const fmt  = (v, suf) => v != null ? `${v.toLocaleString("sv-SE")}${suf}` : "—";
+            l.bindPopup(
+              `<strong>${namn}</strong><br>` +
+              `<table style="font-size:13px;border-collapse:collapse;margin-top:4px">` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Befolkning:</td><td>${fmt(pop, " inv")}</td></tr>` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Area:</td><td>${fmt(area, " km²")}</td></tr>` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Täthet:</td><td>${fmt(tat, " inv/km²")}</td></tr>` +
+              `</table>`
+            );
+            l.on("mouseover", () => l.setStyle({ fillOpacity: 0.85 }));
+            l.on("mouseout",  () => l.setStyle({ fillOpacity: 0.65 }));
+          }
+        });
+
+        overlays["Befolkningstäthet"] = täthetLayer;
+        layerControl.addOverlay(täthetLayer, "Befolkningstäthet");
+
+        // Uppdatera legend när lagret visas/döljs
+        map.on("overlayadd", (e) => {
+          if (e.layer === täthetLayer) { activeLegendLayer = "density"; updateLegend(); }
+        });
+        map.on("overlayremove", (e) => {
+          if (e.layer === täthetLayer) { activeLegendLayer = "mp"; updateLegend(); }
+        });
+      })
+      .catch(err => console.error("Kunde inte ladda befolkningstäthet:", err));
   </script>
 </body>
 </html>
