@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>Stockholms cykelpotential — visualisering</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #fafaf7;
+    --fg: #1a1a1a;
+    --muted: #666;
+    --rule: #e3e3df;
+    --panel: #ffffff;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --bike-dark: #0a7a3b;
+    --bike-mid: #2ca25f;
+    --bike-light: #b2e2a4;
+    --car: #c1272d;
+    --carp: #999999;
+    --pt: #0073b7;
+    --walk: #e69f00;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; line-height: 1.55; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 24px; margin-bottom: 32px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .tag { color: var(--muted); font-size: 0.95rem; margin: 0; }
+  h2 { font-size: 1.35rem; margin: 56px 0 8px; letter-spacing: -0.01em; }
+  h3 { font-size: 1rem; margin: 24px 0 4px; color: var(--muted); font-weight: 600; }
+  p { margin: 8px 0 16px; max-width: 70ch; }
+  p.lede { font-size: 1.1rem; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 24px 0 8px; }
+  .kpi { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; box-shadow: var(--shadow); }
+  .kpi .num { font-size: 1.6rem; font-weight: 700; color: var(--bike-dark); letter-spacing: -0.02em; }
+  .kpi .lab { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+  .controls { display: flex; gap: 8px; margin: 8px 0 16px; flex-wrap: wrap; }
+  .controls button { background: var(--panel); border: 1px solid var(--rule); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 0.9rem; color: var(--fg); font-family: inherit; }
+  .controls button:hover { background: #f0f0ec; }
+  .controls button.active { background: var(--bike-dark); color: white; border-color: var(--bike-dark); }
+  .chart, .map-panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 16px; margin-top: 8px; box-shadow: var(--shadow); }
+  .map-panel { padding: 0; overflow: hidden; }
+  #chart-map { height: 560px; width: 100%; }
+  .map-legend { background: rgba(255,255,255,0.95); border-radius: 8px; padding: 10px 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-size: 12px; line-height: 1.6; }
+  .map-legend h4 { margin: 0 0 6px; font-size: 13px; color: #333; }
+  .map-legend-item { display: flex; align-items: center; gap: 6px; }
+  .map-legend-color { width: 20px; height: 14px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.15); flex-shrink: 0; }
+  .note { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
+  footer { border-top: 1px solid var(--rule); padding-top: 24px; margin-top: 64px; font-size: 0.85rem; color: var(--muted); }
+  footer a { color: var(--muted); }
+  code { background: #efece5; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  .toc { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 18px; margin: 16px 0 32px; box-shadow: var(--shadow); }
+  .toc ol { margin: 4px 0 0 18px; padding: 0; }
+  .toc a { color: var(--bike-dark); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Stockholms cykelpotential</h1>
+  <p class="tag">Vad händer om bilpendlare som kan cykla till jobbet inom 30 respektive 50 minuter byter färdmedel?</p>
+</header>
+
+<p class="lede">Av Stockholms läns 924 000 förvärvsarbetande cyklar idag bara <strong>5,8 %</strong> till jobbet, medan <strong>38 %</strong> kör bil. Forskning från Umeå universitet och GIH har modellerat hur stor den realistiska överflyttningen skulle kunna vara om alla som klarar pendlingstiden på cykel också väljer cykeln.</p>
+
+<div class="kpis">
+  <div class="kpi"><div class="num">111 487</div><div class="lab">nya cyklister inom 30 min</div></div>
+  <div class="kpi"><div class="num">171 956</div><div class="lab">nya cyklister inom 50 min</div></div>
+  <div class="kpi"><div class="num">31,6 %</div><div class="lab">av bilpendlare byter (30 min)</div></div>
+  <div class="kpi"><div class="num">48,7 %</div><div class="lab">av bilpendlare byter (50 min)</div></div>
+</div>
+
+<div class="toc">
+  <strong>Innehåll</strong>
+  <ol>
+    <li><a href="#modalsplit">Färdmedelsfördelning — idag vs scenarier</a></li>
+    <li><a href="#geografi">Modal shift per bostadsområde</a></li>
+    <li><a href="#karta">Karta: cykelpotential per makroområde</a></li>
+    <li><a href="#sankey">Pendlingsströmmar bostad → arbete</a></li>
+    <li><a href="#demografi">Vem är den nya cyklisten?</a></li>
+  </ol>
+</div>
+
+<!-- 1. MODAL SPLIT -->
+<h2 id="modalsplit">1. Färdmedelsfördelning — idag vs scenarier</h2>
+<p>Bilandelen halveras nästan i 50-minutersscenariot (38 % → 20 %), och cyklandet fyrdubblas. Övriga färdmedel (kollektivt, gång, bilpassagerare) hålls konstanta i modellen — det är bilförare som byter.</p>
+<div class="chart" id="chart-modalsplit" style="height:360px;"></div>
+<p class="note">Källa: Tabell 1 och Tabell 3.</p>
+
+<!-- 2. MODAL SHIFT PER GEOGRAFI -->
+<h2 id="geografi">2. Modal shift per bostadsområde</h2>
+<p>Innerstaden sticker ut med extremt hög potential: <strong>71 % respektive 84 %</strong> av bilpendlarna där kan istället cykla. I länets ytterkanter är potentialen lägre i procent men de absoluta antalen blir stora — t.ex. 37 477 nya cyklister i södra länet i 50-minutersscenariot.</p>
+<div class="chart" id="chart-geo" style="height:520px;"></div>
+<p class="note">Modal shift = andel av bilpendlarna som byter färdmedel i scenariot. Siffror i parentes = antal nya cyklister. Källa: Tabell 5.</p>
+
+<!-- 3. KARTA -->
+<h2 id="karta">3. Karta: cykelpotential per makroområde</h2>
+<p>Studien delar in länet i fem makroområden. Färgskalan visar modal shift — hur stor andel av bilpendlarna som byter till cykel i scenariot.</p>
+<div class="controls" id="map-controls">
+  <button data-scen="shift30" class="active">30-minutersscenario</button>
+  <button data-scen="shift50">50-minutersscenario</button>
+</div>
+<div class="map-panel">
+  <div id="chart-map"></div>
+</div>
+<p class="note">Klicka på ett område för detaljer. Indelningen är studiens egen, inte SCB:s standardindelning. Källa: Tabell 5 + egen geokonstruktion från Lantmäteriets RegSO-data.</p>
+
+<!-- 4. SANKEY -->
+<h2 id="sankey">4. Pendlingsströmmar bostad → arbete</h2>
+<p>Var bor de nya cyklisterna, och vart pendlar de? De flesta byten sker inom samma område, men flödet från förorter och innerstaden till varandra är också stort — särskilt i 50-minutersscenariot.</p>
+<div class="controls" id="sankey-controls">
+  <button data-scen="30-minute" class="active">30-minutersscenario</button>
+  <button data-scen="50-minute">50-minutersscenario</button>
+</div>
+<div class="chart" id="chart-sankey" style="height:560px;"></div>
+<p class="note">Bredden på flödet motsvarar antalet nya cyklister. Källa: Appendix A.</p>
+
+<!-- 5. DEMOGRAFI -->
+<h2 id="demografi">5. Vem är den nya cyklisten?</h2>
+<p>Yngre män har högst modal shift i procent, men i absoluta tal står medelålders (36–50) för den största gruppen nya cyklister i båda scenarierna.</p>
+<div class="chart" id="chart-demo" style="height:460px;"></div>
+<p class="note">Siffror i parentes = antal nya cyklister i den kohorten. Källa: Tabell 4.</p>
+
+<footer>
+  <p><strong>Källa:</strong> Strömgren M, Schantz P, Sommar JN, Raza W, Markstedt A, Forsberg B (2020). <em>Modeling commuter modal shift from car trips to cycling: Scenario construction and outcomes for Stockholm, Sweden.</em> Journal of Transport Geography 86, 102740. <a href="https://doi.org/10.1016/j.jtrangeo.2020.102740" target="_blank" rel="noopener">DOI</a> · CC BY-NC-ND 4.0.</p>
+  <p>Visualisering producerad i projektet <a href="https://larsstromgren.github.io/">larsstromgren.github.io</a>. Studien delar in länet i fem makroområden (Inner City, Northern/Southern suburbs, Northern/Southern County) — detta är studiens egen indelning, inte SCB:s standardindelning. Geometrin är rekonstruerad genom att aggregera Lantmäteriets RegSO-områden och Stockholms stadsdelsdata.</p>
+</footer>
+
+</div>
+
+<script>
+// =========================================================================
+// DATA
+// =========================================================================
+
+const modesOrder = ["Car driver", "Car passenger", "Public transport", "Walking", "Cycling"];
+const modeLabel  = {
+  "Car driver": "Bil (förare)",
+  "Car passenger": "Bil (passagerare)",
+  "Public transport": "Kollektivt",
+  "Walking": "Gång",
+  "Cycling": "Cykel"
+};
+const modeColor  = {
+  "Car driver": "#c1272d",
+  "Car passenger": "#999999",
+  "Public transport": "#0073b7",
+  "Walking": "#e69f00",
+  "Cycling": "#2ca25f"
+};
+
+// Table 1 — baseline (% av befolkningen)
+const baseline = {
+  "Car driver": 38.2, "Car passenger": 3.8, "Public transport": 38.1,
+  "Walking": 14.1, "Cycling": 5.8
+};
+const scen30 = { "Car driver": 26.1, "Car passenger": 3.8, "Public transport": 38.1, "Walking": 14.1, "Cycling": 17.8 };
+const scen50 = { "Car driver": 19.6, "Car passenger": 3.8, "Public transport": 38.1, "Walking": 14.1, "Cycling": 24.4 };
+
+// Geografi
+const geoOrder = ["Inner City", "Northern suburbs", "Southern suburbs", "Northern County", "Southern County"];
+const geoLabel = {
+  "Inner City": "Innerstaden", "Northern suburbs": "Norra förorter", "Southern suburbs": "Södra förorter",
+  "Northern County": "Norra länet", "Southern County": "Södra länet"
+};
+const geoShift = {
+  "30-minute": { "Inner City": 71.4, "Northern suburbs": 37.1, "Southern suburbs": 30.8, "Northern County": 22.9, "Southern County": 26.1 },
+  "50-minute": { "Inner City": 84.2, "Northern suburbs": 66.2, "Southern suburbs": 57.9, "Northern County": 34.6, "Southern County": 37.5 }
+};
+const geoNew = {
+  "30-minute": { "Inner City": 21278, "Northern suburbs": 22286, "Southern suburbs": 17566, "Northern County": 24234, "Southern County": 26123 },
+  "50-minute": { "Inner City": 25096, "Northern suburbs": 39801, "Southern suburbs": 33010, "Northern County": 36572, "Southern County": 37477 }
+};
+
+// Flödesmatris
+const flowData = {
+  "30-minute": [
+    ["Northern County","Northern County",22128],["Northern County","Northern suburbs",2105],["Northern County","Inner City",1],
+    ["Northern suburbs","Northern County",872],["Northern suburbs","Northern suburbs",16831],["Northern suburbs","Inner City",4429],
+    ["Inner City","Northern suburbs",1786],["Inner City","Inner City",18024],["Inner City","Southern suburbs",1468],
+    ["Southern suburbs","Northern suburbs",139],["Southern suburbs","Inner City",4665],["Southern suburbs","Southern suburbs",11907],["Southern suburbs","Southern County",855],
+    ["Southern County","Inner City",7],["Southern County","Southern suburbs",1731],["Southern County","Southern County",24385]
+  ],
+  "50-minute": [
+    ["Northern County","Northern County",29465],["Northern County","Northern suburbs",6414],["Northern County","Inner City",691],["Northern County","Southern suburbs",2],
+    ["Northern suburbs","Northern County",2347],["Northern suburbs","Northern suburbs",23600],["Northern suburbs","Inner City",12795],["Northern suburbs","Southern suburbs",1044],["Northern suburbs","Southern County",15],
+    ["Inner City","Northern County",38],["Inner City","Northern suburbs",3587],["Inner City","Inner City",18866],["Inner City","Southern suburbs",2535],["Inner City","Southern County",70],
+    ["Southern suburbs","Northern County",6],["Southern suburbs","Northern suburbs",1391],["Southern suburbs","Inner City",12549],["Southern suburbs","Southern suburbs",16667],["Southern suburbs","Southern County",2397],
+    ["Southern County","Northern suburbs",39],["Southern County","Inner City",921],["Southern County","Southern suburbs",4954],["Southern County","Southern County",31563]
+  ]
+};
+
+// Demografi: Table 4 — kön × ålder med absoluta tal (no_of_persons) och modal_shift_pct
+const demoOrder = [["Women","<=35"],["Women","36-50"],["Women",">=51"],["Men","<=35"],["Men","36-50"],["Men",">=51"]];
+const demoLabel = (sex, age) => {
+  const a = age === "<=35" ? "≤35" : age === ">=51" ? "≥51" : age;
+  const s = sex === "Women" ? "Kvinnor" : "Män";
+  return s + " " + a;
+};
+const demoShift = {
+  "30-minute": [36.0, 29.3, 30.4, 41.0, 29.1, 27.5],
+  "50-minute": [54.6, 46.5, 45.3, 60.2, 47.3, 42.1]
+};
+const demoCount = {
+  "30-minute": [15610, 22475, 15192, 20335, 23010, 14865],
+  "50-minute": [23708, 35632, 22608, 29853, 37420, 22735]
+};
+
+// =========================================================================
+// FORMATERING + LAYOUT
+// =========================================================================
+
+const fmtSv = (n) => n.toLocaleString('sv-SE');
+
+const baseLayout = {
+  font: { family: 'system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif', size: 13, color: '#1a1a1a' },
+  paper_bgcolor: 'white',
+  plot_bgcolor: 'white',
+  margin: { t: 16, r: 16, b: 56, l: 80 }
+};
+const plotConfig = { displayModeBar: false, responsive: true };
+
+// =========================================================================
+// 1. MODAL SPLIT
+// =========================================================================
+
+(() => {
+  const cats = ["Idag", "30-min-scenario", "50-min-scenario"];
+  const traces = modesOrder.map(mode => ({
+    type: 'bar', orientation: 'h',
+    name: modeLabel[mode],
+    x: [baseline[mode], scen30[mode], scen50[mode]],
+    y: cats,
+    marker: { color: modeColor[mode] },
+    text: [baseline[mode], scen30[mode], scen50[mode]].map(v => v.toFixed(1) + ' %'),
+    textposition: 'inside',
+    insidetextanchor: 'middle',
+    textfont: { color: 'white', size: 12 },
+    hovertemplate: '%{y}<br><b>' + modeLabel[mode] + ':</b> %{x:.1f} %<extra></extra>'
+  }));
+  Plotly.newPlot('chart-modalsplit', traces, {
+    ...baseLayout,
+    barmode: 'stack',
+    xaxis: { title: 'Andel av pendlare (%)', range: [0, 100], ticksuffix: ' %', gridcolor: '#eee' },
+    yaxis: { automargin: true, autorange: 'reversed' },
+    legend: { orientation: 'h', y: -0.2, x: 0 }
+  }, plotConfig);
+})();
+
+// =========================================================================
+// 2. MODAL SHIFT PER GEOGRAFI (med absoluta tal)
+// =========================================================================
+
+(() => {
+  const geoLabels = geoOrder.map(g => geoLabel[g]);
+  const trace30 = {
+    type: 'bar', orientation: 'h',
+    name: '30-min',
+    x: geoOrder.map(g => geoShift["30-minute"][g]),
+    y: geoLabels,
+    marker: { color: '#b2e2a4', line: { color: '#0a7a3b', width: 0.5 } },
+    text: geoOrder.map(g => `${geoShift["30-minute"][g].toFixed(0)} % · ${fmtSv(geoNew["30-minute"][g])}`),
+    textposition: 'outside',
+    textfont: { size: 11 },
+    hovertemplate: '<b>%{y}</b><br>Modal shift: %{x:.1f} %<br>Nya cyklister: ' +
+                   '%{customdata}<extra>30-min</extra>',
+    customdata: geoOrder.map(g => fmtSv(geoNew["30-minute"][g]))
+  };
+  const trace50 = {
+    type: 'bar', orientation: 'h',
+    name: '50-min',
+    x: geoOrder.map(g => geoShift["50-minute"][g]),
+    y: geoLabels,
+    marker: { color: '#0a7a3b' },
+    text: geoOrder.map(g => `${geoShift["50-minute"][g].toFixed(0)} % · ${fmtSv(geoNew["50-minute"][g])}`),
+    textposition: 'outside',
+    textfont: { size: 11 },
+    hovertemplate: '<b>%{y}</b><br>Modal shift: %{x:.1f} %<br>Nya cyklister: ' +
+                   '%{customdata}<extra>50-min</extra>',
+    customdata: geoOrder.map(g => fmtSv(geoNew["50-minute"][g]))
+  };
+  Plotly.newPlot('chart-geo', [trace30, trace50], {
+    ...baseLayout,
+    margin: { t: 16, r: 140, b: 56, l: 110 },
+    barmode: 'group',
+    bargap: 0.2,
+    bargroupgap: 0.08,
+    xaxis: { title: 'Modal shift (% av bilpendlare som byter) — siffran efter · är antal nya cyklister', range: [0, 105], ticksuffix: ' %', gridcolor: '#eee' },
+    yaxis: { automargin: true, autorange: 'reversed' },
+    legend: { orientation: 'h', y: -0.15, x: 0 }
+  }, plotConfig);
+})();
+
+// =========================================================================
+// 3. KARTA — choropleth med Leaflet
+// =========================================================================
+
+(() => {
+  const map = L.map('chart-map', { scrollWheelZoom: false }).setView([59.4, 18.1], 9);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 19, attribution: '&copy; OpenStreetMap &copy; CARTO'
+  }).addTo(map);
+
+  const colorSteps = [
+    { min: 80, color: '#0a7a3b', label: '80 %+' },
+    { min: 60, color: '#2ca25f', label: '60–80 %' },
+    { min: 40, color: '#66c2a4', label: '40–60 %' },
+    { min: 30, color: '#b2e2a4', label: '30–40 %' },
+    { min: 20, color: '#e5f5e0', label: '20–30 %' },
+    { min:  0, color: '#f7fcf5', label: '< 20 %' }
+  ];
+  function getColor(v) {
+    for (const s of colorSteps) if (v >= s.min) return s.color;
+    return '#f7fcf5';
+  }
+
+  let currentScen = 'shift30';
+  let geoLayer = null;
+
+  function styleFn(f) {
+    const v = f.properties[currentScen];
+    return { color: '#444', weight: 1, opacity: 0.9, fillColor: getColor(v), fillOpacity: 0.75 };
+  }
+
+  function buildPopup(f) {
+    const p = f.properties;
+    const s30 = p.shift30, s50 = p.shift50, n30 = p.new30, n50 = p.new50;
+    const highlight = (key, on) => on === key ? 'font-weight:700;color:#0a7a3b' : 'color:#444';
+    return `<strong>${p.sv}</strong>
+      <table style="font-size:13px;border-collapse:collapse;margin-top:6px">
+        <tr><td style="padding:1px 8px 1px 0;${highlight('shift30', currentScen)}">30-min:</td>
+            <td style="text-align:right">${s30.toFixed(1)} %</td>
+            <td style="padding-left:10px;color:#666">${fmtSv(n30)} nya cyklister</td></tr>
+        <tr><td style="padding:1px 8px 1px 0;${highlight('shift50', currentScen)}">50-min:</td>
+            <td style="text-align:right">${s50.toFixed(1)} %</td>
+            <td style="padding-left:10px;color:#666">${fmtSv(n50)} nya cyklister</td></tr>
+      </table>`;
+  }
+
+  // Legend
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = () => {
+    const div = L.DomUtil.create('div', 'map-legend');
+    div.id = 'cykel-legend';
+    div.innerHTML =
+      '<h4>Modal shift</h4>' +
+      '<div style="font-size:11px;color:#777;margin-bottom:4px">% av bilpendlare som byter</div>' +
+      colorSteps.map(s => `<div class="map-legend-item"><span class="map-legend-color" style="background:${s.color}"></span><span>${s.label}</span></div>`).join('');
+    return div;
+  };
+  legend.addTo(map);
+
+  function restyle() {
+    if (!geoLayer) return;
+    geoLayer.eachLayer(l => {
+      l.setStyle(styleFn(l.feature));
+      l.setPopupContent(buildPopup(l.feature));
+    });
+  }
+
+  fetch('data/makroomraden_cykel.geojson')
+    .then(r => r.json())
+    .then(gj => {
+      geoLayer = L.geoJSON(gj, {
+        style: styleFn,
+        onEachFeature: (f, l) => {
+          l.bindPopup(buildPopup(f));
+          l.on('mouseover', () => l.setStyle({ fillOpacity: 0.9, weight: 2 }));
+          l.on('mouseout',  () => l.setStyle({ fillOpacity: 0.75, weight: 1 }));
+        }
+      }).addTo(map);
+      map.fitBounds(geoLayer.getBounds(), { padding: [10, 10] });
+    })
+    .catch(err => {
+      document.getElementById('chart-map').innerHTML =
+        '<div style="padding:24px;color:#c1272d">Kunde inte ladda <code>makroomraden_cykel.geojson</code>: ' + err.message + '</div>';
+    });
+
+  document.querySelectorAll('#map-controls button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#map-controls button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentScen = btn.dataset.scen;
+      restyle();
+    });
+  });
+})();
+
+// =========================================================================
+// 4. SANKEY
+// =========================================================================
+
+const sankeyColors = {
+  "Inner City": "#c1272d", "Northern suburbs": "#0073b7", "Southern suburbs": "#e69f00",
+  "Northern County": "#6a51a3", "Southern County": "#2ca25f"
+};
+
+function drawSankey(scenario) {
+  const labels = geoOrder.map(g => geoLabel[g] + ' (bor)').concat(geoOrder.map(g => geoLabel[g] + ' (jobb)'));
+  const colors = geoOrder.map(g => sankeyColors[g]).concat(geoOrder.map(g => sankeyColors[g]));
+  const flows = flowData[scenario].filter(f => f[2] >= 5);
+  const source = flows.map(f => geoOrder.indexOf(f[0]));
+  const target = flows.map(f => 5 + geoOrder.indexOf(f[1]));
+  const values = flows.map(f => f[2]);
+  const linkColors = flows.map(f => sankeyColors[f[0]] + '66');
+
+  const data = [{
+    type: 'sankey', arrangement: 'snap',
+    node: { pad: 18, thickness: 22, line: { color: 'white', width: 1 }, label: labels, color: colors },
+    link: {
+      source, target, value: values, color: linkColors,
+      hovertemplate: '<b>%{source.label}</b> → <b>%{target.label}</b><br>%{value:,d} nya cyklister<extra></extra>'
+    }
+  }];
+  Plotly.react('chart-sankey', data, {
+    ...baseLayout, margin: { t: 8, r: 8, b: 8, l: 8 }, font: { size: 12 }
+  }, plotConfig);
+}
+
+drawSankey('30-minute');
+document.querySelectorAll('#sankey-controls button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#sankey-controls button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawSankey(btn.dataset.scen);
+  });
+});
+
+// =========================================================================
+// 5. DEMOGRAFI (med absoluta tal)
+// =========================================================================
+
+(() => {
+  const labels = demoOrder.map(([s, a]) => demoLabel(s, a));
+  const trace30 = {
+    type: 'bar', name: '30-min',
+    x: labels, y: demoShift["30-minute"],
+    marker: { color: '#b2e2a4', line: { color: '#0a7a3b', width: 0.5 } },
+    text: demoShift["30-minute"].map((v, i) => `${v.toFixed(0)} %\n${fmtSv(demoCount["30-minute"][i])}`),
+    textposition: 'outside', textfont: { size: 10 },
+    customdata: demoCount["30-minute"].map(fmtSv),
+    hovertemplate: '<b>%{x}</b><br>Modal shift: %{y:.1f} %<br>Nya cyklister: %{customdata}<extra>30-min</extra>'
+  };
+  const trace50 = {
+    type: 'bar', name: '50-min',
+    x: labels, y: demoShift["50-minute"],
+    marker: { color: '#0a7a3b' },
+    text: demoShift["50-minute"].map((v, i) => `${v.toFixed(0)} %\n${fmtSv(demoCount["50-minute"][i])}`),
+    textposition: 'outside', textfont: { size: 10 },
+    customdata: demoCount["50-minute"].map(fmtSv),
+    hovertemplate: '<b>%{x}</b><br>Modal shift: %{y:.1f} %<br>Nya cyklister: %{customdata}<extra>50-min</extra>'
+  };
+  Plotly.newPlot('chart-demo', [trace30, trace50], {
+    ...baseLayout, margin: { t: 24, r: 16, b: 56, l: 60 },
+    barmode: 'group', bargap: 0.25, bargroupgap: 0.08,
+    xaxis: { tickangle: 0 },
+    yaxis: { title: 'Modal shift (%)', range: [0, 80], ticksuffix: ' %', gridcolor: '#eee' },
+    legend: { orientation: 'h', y: -0.15, x: 0 }
+  }, plotConfig);
+})();
+
+</script>
+</body>
+</html>

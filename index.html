@@ -49,6 +49,24 @@
     .year-ticks span:hover { background: #e5f5e0; }
     .year-ticks span.active { font-weight: 700; color: #0a7a3b; }
 
+    /* --- Länk till cykelpotential --- */
+    .extra-link {
+      position: absolute;
+      top: 14px;
+      right: 56px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      border-radius: 999px;
+      padding: 8px 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 13px;
+      font-weight: 600;
+      color: #0a7a3b;
+      text-decoration: none;
+      transition: background 0.15s;
+    }
+    .extra-link:hover { background: #e5f5e0; }
+
     /* --- Legend --- */
     .legend {
       background: rgba(255,255,255,0.95);
@@ -79,6 +97,9 @@
 </head>
 <body>
   <div id="map"></div>
+
+  <!-- Länk till cykelpotential-rapporten -->
+  <a class="extra-link" href="cykelpotential.html" title="Visualisering av Stockholms cykelpotential">🚲 Cykelpotential</a>
 
   <!-- Tidslinje-slider -->
   <div class="year-slider-container" id="yearSliderBox">
