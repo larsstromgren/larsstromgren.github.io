@@ -152,6 +152,24 @@
       return "#f7fcf5";
     }
 
+    // --- Färgskala: bilandel per zon (Movement Analytics) ---
+    const carSteps = [
+      { min: 55, color: "#7f0000", label: "≥ 55 %" },
+      { min: 45, color: "#d73027", label: "45–55 %" },
+      { min: 35, color: "#fc8d59", label: "35–45 %" },
+      { min: 30, color: "#fee08b", label: "30–35 %" },
+      { min: 25, color: "#d9ef8b", label: "25–30 %" },
+      { min:  0, color: "#1a9850", label: "< 25 %" }
+    ];
+
+    function getCarColor(pct) {
+      if (pct == null) return "#cccccc";
+      for (const s of carSteps) {
+        if (pct >= s.min) return s.color;
+      }
+      return "#1a9850";
+    }
+
     // --- Färgskala: befolkningstäthet (inv/km²) ---
     const densitySteps = [
       { min: 15000, color: "#7f0000", label: "≥ 15 000" },
@@ -173,12 +191,19 @@
 
     // --- Dynamisk legend ---
     const legend = L.control({ position: "bottomright" });
-    let activeLegendLayer = "mp"; // "mp" eller "density"
+    let activeLegendLayer = "mp"; // "mp", "density" eller "car"
 
     function buildLegendHtml() {
       if (activeLegendLayer === "density") {
         return '<h4>Befolkningstäthet</h4><div style="font-size:11px;color:#777;margin-bottom:4px">inv/km² (2024)</div>' +
           densitySteps.map(s =>
+            `<div class="legend-item"><span class="legend-color" style="background:${s.color}"></span><span>${s.label}</span></div>`
+          ).join("") +
+          '<div class="legend-item"><span class="legend-color" style="background:#cccccc"></span><span>Data saknas</span></div>';
+      }
+      if (activeLegendLayer === "car") {
+        return '<h4>Bilandel av resor</h4><div style="font-size:11px;color:#777;margin-bottom:4px">Movement Analytics, feb 2026</div>' +
+          carSteps.map(s =>
             `<div class="legend-item"><span class="legend-color" style="background:${s.color}"></span><span>${s.label}</span></div>`
           ).join("") +
           '<div class="legend-item"><span class="legend-color" style="background:#cccccc"></span><span>Data saknas</span></div>';
@@ -499,6 +524,52 @@
         });
       })
       .catch(err => console.error("Kunde inte ladda befolkningstäthet:", err));
+
+    // 9) Movement Analytics – bilandel per zon (Train Brain, feb 2026, AVSTÄNGT från start)
+    fetch("data/movementanalytics_zoner.geojson")
+      .then(r => r.json())
+      .then(gj => {
+        const dayNames = ["00","01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"];
+
+        const maLayer = L.geoJSON(gj, {
+          style: (f) => ({
+            color: "#444",
+            weight: 0.8,
+            opacity: 0.8,
+            fillColor: getCarColor(f.properties?.car_pct),
+            fillOpacity: 0.65
+          }),
+          onEachFeature: (f, l) => {
+            const p = f.properties;
+            const fmtPct = (v) => v == null ? "—" : v.toFixed(1) + "%";
+            const peak = (p.peak_hour != null) ? `${dayNames[p.peak_hour]}–${dayNames[(p.peak_hour+1)%24]}` : "—";
+            l.bindPopup(
+              `<strong>${p.zone_name}</strong><br>` +
+              `<span style="color:#888;font-size:11px">Zon: ${p.zone_id}</span><br><br>` +
+              `<table style="font-size:13px;border-collapse:collapse">` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Bil:</td><td>${fmtPct(p.car_pct)}</td></tr>` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Hållbart resande:</td><td>${fmtPct(p.sustainable_pct)}</td></tr>` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Vanligaste restimme:</td><td>${peak}</td></tr>` +
+              `<tr><td style="padding:1px 8px 1px 0;color:#555">Kön (man/kvinna):</td><td>${fmtPct(p.pct_man)} / ${fmtPct(p.pct_kvinna)}</td></tr>` +
+              `</table>` +
+              `<div style="font-size:10px;color:#999;margin-top:4px">Källa: The Train Brain Movement Analytics, feb 2026</div>`
+            );
+            l.on("mouseover", () => l.setStyle({ fillOpacity: 0.85 }));
+            l.on("mouseout",  () => l.setStyle({ fillOpacity: 0.65 }));
+          }
+        });
+
+        overlays["Bilandel per zon (Movement Analytics)"] = maLayer;
+        layerControl.addOverlay(maLayer, "Bilandel per zon (Movement Analytics)");
+
+        map.on("overlayadd", (e) => {
+          if (e.layer === maLayer) { activeLegendLayer = "car"; updateLegend(); }
+        });
+        map.on("overlayremove", (e) => {
+          if (e.layer === maLayer) { activeLegendLayer = "mp"; updateLegend(); }
+        });
+      })
+      .catch(err => console.error("Kunde inte ladda movementanalytics_zoner.geojson:", err));
   </script>
 </body>
 </html>
