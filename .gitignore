@@ -1,0 +1,14 @@
+# Hemligheter. API-nyckeln får ALDRIG nå detta repo, det är publikt.
+.env
+.env.*
+*.key
+
+# Skräp
+.DS_Store
+.claude/
+.postman/
+postman/
+
+# Mellanlager och cache från byggsteget
+bygg/cache/
+__pycache__/
