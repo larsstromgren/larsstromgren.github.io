@@ -34,6 +34,23 @@ Rollfördelning för de andra mapparna: `~/kartor-statistik` är analysbänken
 
 ---
 
+## Kör alltid `git pull` innan du börjar
+
+Lars laddar ibland upp filer via **GitHubs webbgränssnitt**. Det skapar commits
+med meddelandet "Add files via upload" som den lokala klonen inte känner till,
+och nästa push från datorn vägras tills `git pull` körts.
+
+Två sådana från 2026-08-12 upptäcktes först 2026-09-02, alltså tre veckor
+senare. Den ena innehöll `data/movementanalytics_zoner.geojson` och 73 nya
+rader i `index.html`.
+
+**Regeln:** `git pull` först, alltid, innan något arbete påbörjas i repot.
+Föredra att jobba från datorn framför webbgränssnittet, så att
+commit-meddelandena säger vad som gjordes och varför. Lars egna äldre commits
+är bra på det, webbgränssnittets är det inte.
+
+---
+
 ## Trafikkontorets öppna data
 
 **166 lager, gratis, bakom en API-nyckel.** Verifierat skarpt 2026-09-02.
