@@ -1,6 +1,6 @@
 # Memory, kartrepot
 
-_Last updated: 2026-09-02._
+_Last updated: 2026-10-02._
 
 Persistent minne för kartarbetet. Ändras bara på Lars begäran. Ligger i git,
 vilket betyder att det följer med till varje dator som klonar repot. Det är
@@ -111,6 +111,35 @@ enbart öppna data, och en privat på Cloudflare Pages bakom Cloudflare Access,
 gratis upp till 50 användare. Ett byggskript med en flagga avgör vilka lager
 som följer med, så att ett känsligt lager inte kan råka publiceras genom ett
 slarvigt `git add`.
+
+---
+
+## Cykelpotentialsidan (byggd 2026-05-19)
+
+`cykelpotential.html` visualiserar Strömgren m.fl. (2020), *Modeling commuter
+modal shift from car trips to cycling*, J Transport Geography 86, 102740.
+Plotly och Leaflet via CDN, inget byggsteg. Nås från huvudkartan via
+pill-knappen "Cykelpotential" uppe till höger. Det är mönstret för länkar
+till separata sidor.
+
+`data/makroomraden_cykel.geojson` är studiens egen indelning i fem
+makroområden (innerstad, norra och södra förorter, norra och södra länet),
+inte SCB:s. Byggs av `~/kartor-statistik/scripts/build_makroomraden.py` ur
+RegSO_2018_v2 och stadsdelsgeometrin. Validerad mot 18 kända platser.
+Återanvänd den vid nya visualiseringar på samma indelning.
+
+Källdatan har en rundningsdiff på 154 personer: Appendix A summerar till
+111 333 i 30-minutersscenariot mot Tabell 3:s 111 487. Sankeyn visar därför
+något färre än KPI-rutorna. Felet är studiens, inte vårt.
+
+**Python:** ingen venv eller conda för geodata. Kör
+`uv run --with geopandas --with pyogrio python3 <skript>`.
+
+**`~/kartor-statistik`** flyttades ut ur Dropbox 2026-05-19, eftersom
+Dropbox-synken kan korrumpera `.git/`. Speglas till det privata repot
+`larsstromgren/kartor-statistik`.
+
+---
 
 Hackathonutmaningen "Framtidens hållbara och hälsosamma städer", där Lars satt
 i juryn, är avklarad per 2026-09-02 och styr inget framåt.
