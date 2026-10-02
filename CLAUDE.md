@@ -54,14 +54,36 @@ måste överleva mellan sessioner.
 
 ---
 
-## Det olösta
+## Avgjort 2026-10-02: stadsdelsområde för statistik, stadsdel för geografi
 
-**"Stadsdel" betyder två olika saker.** Stadskartans 117 stadsdelar mot
-statistikens 132 Nyko 5-områden. I ytterstaden sammanfaller de i stort, i
-innerstaden inte alls. Kopplas befolkningsstatistik till kartpolygoner på namn
-uppstår tyst bortfall i innerstaden. Beslut om vilket begrepp som ska gälla,
-eller om båda ska finnas som parallella dimensioner, är inte fattat. Hela
-resonemanget står i `Stadsdelsdatabas/ANTECKNINGAR.md`.
+**"Stadsdel" betyder två olika saker,** och frågan om vilket begrepp som gäller
+är nu avgjord genom mätning, inte val.
+
+Kopplas stadens statistik till stadskartans 117 polygoner på namn matchar bara
+**101 av 135** rader, och **310 186 personer, 31,2 procent av staden, faller
+bort**. Bortfallet är nästan uteslutande innerstaden, där statistiken räknar
+församlingar (Klara, Jakob, Gustav Vasa, Hedvig Eleonora, Östra Katarina) och
+kartan räknar stadsdelar. Sexton polygoner blir helt utan siffror, bland dem
+Norrmalm, Vasastaden, Södermalm, Östermalm, Kungsholmen och Gamla Stan.
+
+**Regeln:**
+
+- **Stadens egen statistik läggs på stadsdelsområde**, elva stycken, där
+  bortfallet är noll. Lagret byggs av `bygg/bygg_stadsdelsomraden.py` och
+  ligger i `data/stadsdelsomraden.geojson`.
+- **De 117 stadsdelarna används för geografi** och för mått vi räknar ut själva,
+  där stadens befolkningstabell inte behövs, till exempel avstånd till ett
+  cykelstråk.
+
+Det fungerar eftersom varje statistikrad har en känd förälder i källfilens egen
+hierarki: Klara under Södra Norrmalm under Norra innerstaden. Verifierat mot
+filens rad "Hela staden": 991 937 i lagret plus 3 637 på kommunen skrivna blir
+995 574.
+
+Bakgrunden står i `Stadsdelsdatabas/ANTECKNINGAR.md`, men notera att den filens
+uppgift om att en nyckeltabell måste beställas från Sweco är överspelad.
+
+## Det olösta
 
 **Scenariomotorn är inte byggd.** Planerad som tre typer, där ett scenario är
 en JSON-fil och aldrig en kodändring:
