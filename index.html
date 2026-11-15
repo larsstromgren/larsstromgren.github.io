@@ -570,6 +570,36 @@
         });
       })
       .catch(err => console.error("Kunde inte ladda movementanalytics_zoner.geojson:", err));
+
+    // 10) Byggnader ur ArkDes "Byggnader i Sverige" (KulturNav, CC0), AVSTÄNGT från start
+    //     Byggs av bygg/bygg_byggnader.py. Saknas filen visas lagret inte alls.
+    fetch("data/byggnader_arkdes.geojson")
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(gj => {
+        const esc = (t) => String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+        const byggLayer = L.geoJSON(gj, {
+          pointToLayer: (f, latlng) => L.circleMarker(latlng, {
+            radius: 5,
+            color: "#7a3e00",
+            weight: 1,
+            fillColor: "#e67e22",
+            fillOpacity: 0.85
+          }),
+          onEachFeature: (f, l) => {
+            const p = f.properties;
+            l.bindPopup(
+              `<strong>${esc(p.name)}</strong><br>` +
+              (p.year ? `Byggår: ${p.year}<br>` : "") +
+              `<a href="${p.url}" target="_blank" rel="noopener">Mer på KulturNav</a>` +
+              `<div style="font-size:10px;color:#999;margin-top:4px">Källa: ArkDes via KulturNav, CC0</div>`
+            );
+          }
+        });
+
+        overlays["Byggnader (ArkDes)"] = byggLayer;
+        layerControl.addOverlay(byggLayer, "Byggnader (ArkDes)");
+      })
+      .catch(err => console.warn("Byggnadslagret saknas, kör bygg/bygg_byggnader.py:", err));
   </script>
 </body>
 </html>
