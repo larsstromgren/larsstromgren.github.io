@@ -134,7 +134,15 @@
       zoom: (s) => Math.log(s * STADSKARTA.res0) / Math.LN2
     });
 
-    const map = L.map("map", { crs: stadsCRS, minZoom: 0, maxZoom: 10 })
+    // Stadskartans utbredning, ungefär 6 x 6 mil kring Stockholm.
+    const stadsUtbredning = L.latLngBounds(
+      L.CRS.EPSG3857.unproject(L.point(STADSKARTA.x0, STADSKARTA.y1 - 256 * STADSKARTA.res0)),
+      L.CRS.EPSG3857.unproject(L.point(STADSKARTA.x0 + 256 * STADSKARTA.res0, STADSKARTA.y1))
+    );
+
+    // minZoom 2: nivå 0 och 1 är de långsammaste för servern att rita och ger
+    // ändå bara ett frimärke av staden. fitBounds stannar därför på nivå 2.
+    const map = L.map("map", { crs: stadsCRS, minZoom: 2, maxZoom: 10 })
       .setView([59.3293, 18.0686], 3);
 
     // Bakgrundskarta.
@@ -146,8 +154,9 @@
       transparent: false,
       version: "1.1.1",
       tiled: true,
-      minZoom: 0,
+      minZoom: 2,
       maxZoom: 10,
+      bounds: stadsUtbredning,
       attribution: 'Karta &copy; <a href="https://dataportalen.stockholm.se/">Stockholms stad, Stadsbyggnadskontoret</a> (CC BY)'
     }).addTo(map);
 
