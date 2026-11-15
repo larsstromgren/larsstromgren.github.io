@@ -114,32 +114,45 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const map = L.map("map").setView([59.3293, 18.0686], 12);
+    // Kartan följer Stadskartans eget rutnät (Stadsbyggnadskontoret, WMS-C i EPSG:3857).
+    // Servern sparar varje kartbild den har ritat, men bara om rutan stämmer exakt med
+    // dess rutnät: origo i övre vänstra hörnet av utbredningen, upplösning 230,112 m/pixel
+    // på nivå 0, halverad per nivå till nivå 10. En sparad bild kommer på 0,3 s,
+    // en som ritas för första gången tar 10 till 30 s. Mätt 2026-11-16.
+    // Leaflets vanliga zoomsteg passar inte det rutnätet, därav ett eget koordinatsystem.
+    // Nackdel: vanliga kartbilder (OpenStreetMap m.fl.) hamnar fel i detta system.
+    const STADSKARTA = {
+      url: "https://kartor.stockholm.se/bios/wms/app/baggis/web/WMS_STHLM_STADSKARTA",
+      lager: "p_1002330",
+      x0: 1974296.475105687,
+      y1: 8282561.675140506,
+      res0: 230.11218104091586
+    };
+    const stadsCRS = L.extend({}, L.CRS.EPSG3857, {
+      transformation: new L.Transformation(1, -STADSKARTA.x0, -1, STADSKARTA.y1),
+      scale: (z) => Math.pow(2, z) / STADSKARTA.res0,
+      zoom: (s) => Math.log(s * STADSKARTA.res0) / Math.LN2
+    });
 
-    // Bakgrundskartor.
+    const map = L.map("map", { crs: stadsCRS, minZoom: 0, maxZoom: 10 })
+      .setView([59.3293, 18.0686], 3);
+
+    // Bakgrundskarta.
     // CARTO började kräva API-nyckel hösten 2026 och visade "API KEY REQUIRED" över
-    // hela kartan. Ersatt 2026-11-16 med Stockholms stads egen karta (Stadsbyggnadskontoret,
-    // WMS, öppna data CC BY) och OpenStreetMap som reserv utanför staden.
-    const stockholm = L.tileLayer.wms(
-      "https://kartor.stockholm.se/bios/wms/app/baggis/web/WMS_STHLM_STOCKHOLMSKARTA_GRA_FORENKLAD",
-      {
-        layers: "p_1002770",
-        format: "image/png",
-        transparent: false,
-        version: "1.1.1",
-        maxZoom: 20,
-        attribution: 'Karta &copy; <a href="https://dataportalen.stockholm.se/">Stockholms stad, Stadsbyggnadskontoret</a> (CC BY)'
-      }
-    ).addTo(map);
-
-    const osm = L.tileLayer(
-      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
-    );
+    // hela kartan. Ersatt 2026-11-16 med Stockholms stads Stadskarta (öppna data, CC BY).
+    const stockholm = L.tileLayer.wms(STADSKARTA.url, {
+      layers: STADSKARTA.lager,
+      format: "image/png",
+      transparent: false,
+      version: "1.1.1",
+      tiled: true,
+      minZoom: 0,
+      maxZoom: 10,
+      attribution: 'Karta &copy; <a href="https://dataportalen.stockholm.se/">Stockholms stad, Stadsbyggnadskontoret</a> (CC BY)'
+    }).addTo(map);
 
     const baseLayers = {
-      "Stockholmskartan": stockholm,
-      "OpenStreetMap": osm
+      "Stadskartan": stockholm
     };
 
     const overlays = {};
