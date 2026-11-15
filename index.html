@@ -116,19 +116,30 @@
   <script>
     const map = L.map("map").setView([59.3293, 18.0686], 12);
 
-    const light = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-      { subdomains: "abcd", maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; CARTO" }
+    // Bakgrundskartor.
+    // CARTO började kräva API-nyckel hösten 2026 och visade "API KEY REQUIRED" över
+    // hela kartan. Ersatt 2026-11-16 med Stockholms stads egen karta (Stadsbyggnadskontoret,
+    // WMS, öppna data CC BY) och OpenStreetMap som reserv utanför staden.
+    const stockholm = L.tileLayer.wms(
+      "https://kartor.stockholm.se/bios/wms/app/baggis/web/WMS_STHLM_STOCKHOLMSKARTA_GRA_FORENKLAD",
+      {
+        layers: "p_1002770",
+        format: "image/png",
+        transparent: false,
+        version: "1.1.1",
+        maxZoom: 20,
+        attribution: 'Karta &copy; <a href="https://dataportalen.stockholm.se/">Stockholms stad, Stadsbyggnadskontoret</a> (CC BY)'
+      }
     ).addTo(map);
 
-    const dark = L.tileLayer(
-      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-      { subdomains: "abcd", maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; CARTO" }
+    const osm = L.tileLayer(
+      "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }
     );
 
     const baseLayers = {
-      "Ljus (svart/vit)": light,
-      "Mörk (svart/vit)": dark
+      "Stockholmskartan": stockholm,
+      "OpenStreetMap": osm
     };
 
     const overlays = {};
